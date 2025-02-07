@@ -31,6 +31,8 @@ class VMManager: NSObject, ObservableObject {
             self.provisioner = BuildkiteAgentProvisioner(config: buildkiteConfig)
         case let .script(scriptConfig):
             self.provisioner = ScriptProvisioner(runBlock: scriptConfig.run)
+        case let .azure(azureConfig):
+            self.provisioner = AzureDevopsAgentProvisioner(config: azureConfig)
         }
         self.config = config
         self.masterBundle = VMBundle(url: URL(filePath: config.source.localPath))
