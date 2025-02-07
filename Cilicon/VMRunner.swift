@@ -31,6 +31,8 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
             self.provisioner = GitLabRunnerProvisioner(config: gitLabConfig)
         case let .buildkite(buildkiteConfig):
             self.provisioner = BuildkiteAgentProvisioner(config: buildkiteConfig)
+        case let .azure(azureConfig):
+            self.provisioner = AzureDevopsAgentProvisioner(config: azureConfig)
         case let .script(scriptConfig):
             self.provisioner = ScriptProvisioner(runBlock: scriptConfig.run)
         }

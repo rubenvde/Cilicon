@@ -5,6 +5,7 @@ enum ProvisionerConfig: Codable {
     case gitlab(GitLabProvisionerConfig)
     case buildkite(BuildkiteAgentProvisionerConfig)
     case script(ScriptProvisionerConfig)
+    case azure(AzureAgentProvisionerConfig)
 
     enum CodingKeys: CodingKey {
         case type
@@ -27,6 +28,9 @@ enum ProvisionerConfig: Codable {
         case .script:
             let config = try container.decode(ScriptProvisionerConfig.self, forKey: .config)
             self = .script(config)
+        case .azure:
+            let config = try container.decode(AzureAgentProvisionerConfig.self, forKey: .config)
+            self = .azure(config)
         }
     }
 
@@ -47,6 +51,7 @@ enum ProvisionerConfig: Codable {
         case gitlab
         case buildkite
         case script
+        case azure
     }
 
     var uiRepresentation: String {
@@ -59,6 +64,8 @@ enum ProvisionerConfig: Codable {
             return "Buildkite"
         case .script:
             return "Script"
+        case .azure:
+            return "Azure"
         }
     }
 }

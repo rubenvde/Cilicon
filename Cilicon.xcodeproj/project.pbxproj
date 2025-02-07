@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		0EBACEC3299287AA00A041C4 /* GitlabProvisionerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EBACEC2299287AA00A041C4 /* GitlabProvisionerConfig.swift */; };
 		0EBACEC6299287BF00A041C4 /* GitLabRunnerProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EBACEC5299287BF00A041C4 /* GitLabRunnerProvisioner.swift */; };
+		454E09E32D565A730091ACE1 /* AzureAgentProvisionerConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 454E09E22D565A6B0091ACE1 /* AzureAgentProvisionerConfig.swift */; };
+		454E09E72D565B7D0091ACE1 /* AzureDevopsAgentProvisioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 454E09E62D565B7A0091ACE1 /* AzureDevopsAgentProvisioner.swift */; };
 		629EA1332A05A6BC00899D73 /* ANSIParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629EA1322A05A6BC00899D73 /* ANSIParser.swift */; };
 		A91D8AB82C25803400810198 /* WWWAuthenticate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91D8AB42C257FF100810198 /* WWWAuthenticate.swift */; };
 		A91D8AB92C25803400810198 /* Descriptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91D8AB12C257FF100810198 /* Descriptor.swift */; };
@@ -65,6 +67,8 @@
 /* Begin PBXFileReference section */
 		0EBACEC2299287AA00A041C4 /* GitlabProvisionerConfig.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GitlabProvisionerConfig.swift; sourceTree = "<group>"; };
 		0EBACEC5299287BF00A041C4 /* GitLabRunnerProvisioner.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GitLabRunnerProvisioner.swift; sourceTree = "<group>"; };
+		454E09E22D565A6B0091ACE1 /* AzureAgentProvisionerConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureAgentProvisionerConfig.swift; sourceTree = "<group>"; };
+		454E09E62D565B7A0091ACE1 /* AzureDevopsAgentProvisioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureDevopsAgentProvisioner.swift; sourceTree = "<group>"; };
 		629EA1322A05A6BC00899D73 /* ANSIParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ANSIParser.swift; sourceTree = "<group>"; };
 		A91D8AB12C257FF100810198 /* Descriptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Descriptor.swift; sourceTree = "<group>"; };
 		A91D8AB22C257FF100810198 /* Manifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manifest.swift; sourceTree = "<group>"; };
@@ -148,6 +152,14 @@
 				0EBACEC5299287BF00A041C4 /* GitLabRunnerProvisioner.swift */,
 			);
 			path = "GitLab Runner";
+			sourceTree = "<group>";
+		};
+		454E09E52D565B550091ACE1 /* Azure Devops Agent */ = {
+			isa = PBXGroup;
+			children = (
+				454E09E62D565B7A0091ACE1 /* AzureDevopsAgentProvisioner.swift */,
+			);
+			path = "Azure Devops Agent";
 			sourceTree = "<group>";
 		};
 		A91D8AB52C257FF100810198 /* Model */ = {
@@ -257,6 +269,7 @@
 				A9728DF92918F9A000342A77 /* MachineConfig.swift */,
 				A9728DFB2918F9A000342A77 /* ConfigManager.swift */,
 				A9FDAB2229375E8100B8CA1F /* DirectoryMountConfig.swift */,
+				454E09E22D565A6B0091ACE1 /* AzureAgentProvisionerConfig.swift */,
 				A9728DF72918F9A000342A77 /* GithubProvisionerConfig.swift */,
 				0EBACEC2299287AA00A041C4 /* GitlabProvisionerConfig.swift */,
 				A97080782A041628006E044D /* BuildkiteAgentProvisionerConfig.swift */,
@@ -270,6 +283,7 @@
 		A9728E022918F9A800342A77 /* Provisioner */ = {
 			isa = PBXGroup;
 			children = (
+				454E09E52D565B550091ACE1 /* Azure Devops Agent */,
 				A9728E042918F9BF00342A77 /* Provisioner.swift */,
 				A9517C472937ACA800785136 /* Process */,
 				A97080752A041539006E044D /* Buildkite Agent */,
@@ -485,9 +499,11 @@
 				A91D8ABC2C25803700810198 /* OCI.swift in Sources */,
 				A92166FE2C35B08D0027BCB2 /* VMLogView.swift in Sources */,
 				A92166FC2C35AC4B0027BCB2 /* VMDisplayView.swift in Sources */,
+				454E09E32D565A730091ACE1 /* AzureAgentProvisionerConfig.swift in Sources */,
 				A951BCD9292B966A00FFDACC /* VMConfigHelper+RunConfig.swift in Sources */,
 				A97080772A041553006E044D /* BuildkiteAgentProvisioner.swift in Sources */,
 				A9FA15C82A1CA7CB0085A676 /* LegacyVMBundle.swift in Sources */,
+				454E09E72D565B7D0091ACE1 /* AzureDevopsAgentProvisioner.swift in Sources */,
 				629EA1332A05A6BC00899D73 /* ANSIParser.swift in Sources */,
 				A9CCFAA82B4C31FD002631F4 /* Descriptor+Extensions.swift in Sources */,
 				A961960729DC3A0B0095CAEC /* VMConfig.swift in Sources */,
