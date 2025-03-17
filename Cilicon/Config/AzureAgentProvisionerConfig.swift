@@ -12,6 +12,7 @@ struct AzureAgentProvisionerConfig: Decodable {
     let poolName: String
     let agentName: String
     let agentVersion: String
+    let environmentKeys: [String: String]?
     
     enum CodingKeys: CodingKey {
         case url
@@ -19,6 +20,7 @@ struct AzureAgentProvisionerConfig: Decodable {
         case poolName
         case agentName
         case agentVersion
+        case environmentKeys
     }
     
     init(from decoder: Decoder) throws {
@@ -28,5 +30,6 @@ struct AzureAgentProvisionerConfig: Decodable {
         self.poolName = try container.decode(String.self, forKey: .poolName)
         self.agentName = try container.decode(String.self, forKey: .agentName)
         self.agentVersion = try container.decode(String.self, forKey: .agentVersion)
+        self.environmentKeys = try container.decode([String: String].self, forKey: .environmentKeys)
     }
 }
