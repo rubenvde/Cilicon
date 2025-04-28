@@ -19,7 +19,7 @@ class AzureDevopsAgentProvisioner: Provisioner {
     }
     func provision(sshClient: SSHClient, sshLogger: SSHLogger) async throws {
         // Define download URL and extraction command
-        let downloadUrl = "https://vstsagentpackage.azureedge.net/agent/\(agentVersion)/vsts-agent-osx-arm64-\(agentVersion).tar.gz"
+        let downloadUrl = "https://download.agent.dev.azure.com/agent/\(agentVersion)/vsts-agent-osx-arm64-\(agentVersion).tar.gz"
         let agentDir = "~/myagent"
         
         // Commands to download, extract, and configure the Azure DevOps agent
