@@ -175,7 +175,16 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
         if fileManager.fileExists(atPath: clonePath) {
             try fileManager.removeItem(atPath: clonePath)
         }
-        try fileManager.copyItem(atPath: source, toPath: clonePath)
+
+        try fileManager.createDirectory(atPath: clonePath, withIntermediateDirectories: true)
+        let contents = try fileManager.contentsOfDirectory(atPath: source)
+        for item in contents {
+            if item == "control.sock" { continue }
+            let itemSource = (source as NSString).appendingPathComponent(item)
+            let itemDest = (clonePath as NSString).appendingPathComponent(item)
+            try fileManager.copyItem(atPath: itemSource, toPath: itemDest)
+        }
+
         return URL(filePath: clonePath)
     }
 
