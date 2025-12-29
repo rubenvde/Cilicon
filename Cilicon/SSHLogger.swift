@@ -25,9 +25,13 @@ final class SSHLogger: ObservableObject {
     var combinedLog: String {
         var outString = String()
         for item in logs {
-            outString.append("[\(Self.dateFormatter.string(from: item.timestamp))] \(item.text)\n")
+            outString.append(formattedLogLine(for: item) + "\n")
         }
         return outString
+    }
+
+    func formattedLogLine(for chunk: LogChunk) -> String {
+        return "[\(Self.dateFormatter.string(from: chunk.timestamp))] \(chunk.text)"
     }
 
     func log(buffer: ByteBuffer) {

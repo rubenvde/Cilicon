@@ -14,25 +14,24 @@ struct VMLogView: View {
         vmRunner!.sshLogger
     }
 
-    @State private var refreshID = UUID()
-
     var body: some View {
         ScrollViewReader { scrollViewProxy in
             ScrollView(.vertical) {
                 LazyVStack(alignment: .leading) {
-                    ForEach([logger], id: \.combinedLog) {
-                        Text($0.attributedLog)
+                    ForEach(logger.logs) { chunk in
+                        Text(ANSIParser.parse(logger.formattedLogLine(for: chunk)))
+                            .id(chunk.id)
                     }
                 }
                 .textSelection(.enabled)
-                .onReceive(logger.$logs) { _ in
-                    refreshID = UUID()
-                    scrollViewProxy.scrollTo(logger.combinedLog, anchor: .bottom)
+                .onChange(of: logger.logs) { _ in
+                    if let lastLog = logger.logs.last {
+                        scrollViewProxy.scrollTo(lastLog.id, anchor: .bottom)
+                    }
                 }
             }
         }
         .padding(5)
         .navigationTitle("Log - \(vmRunner?.machineConfig.id ?? "")")
-        .id(refreshID)
     }
 }
