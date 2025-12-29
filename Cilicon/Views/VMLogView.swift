@@ -14,6 +14,8 @@ struct VMLogView: View {
         vmRunner!.sshLogger
     }
 
+    @State private var refreshID = UUID()
+
     var body: some View {
         ScrollViewReader { scrollViewProxy in
             ScrollView(.vertical) {
@@ -23,12 +25,14 @@ struct VMLogView: View {
                     }
                 }
                 .textSelection(.enabled)
-                .onReceive(logger.log.publisher) { _ in
+                .onReceive(logger.$log) { _ in
+                    refreshID = UUID()
                     scrollViewProxy.scrollTo(logger.combinedLog, anchor: .bottom)
                 }
             }
         }
         .padding(5)
         .navigationTitle("Log - \(vmRunner?.machineConfig.id ?? "")")
+        .id(refreshID)
     }
 }

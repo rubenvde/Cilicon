@@ -1,6 +1,6 @@
 import Foundation
 
-public struct OCIURL: Encodable, Hashable {
+public struct OCIURL: Encodable, Hashable, Sendable {
     public let scheme: String
     public let registry: String
     public let repository: String

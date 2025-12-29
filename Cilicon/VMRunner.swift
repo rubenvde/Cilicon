@@ -14,6 +14,7 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
     let macAddress: VZMACAddress
     let sshLogger = SSHLogger()
     let id: String
+    var livenessProbeTask: Task<Void, Never>?
 
     func virtualMachine(_ virtualMachine: VZVirtualMachine, didStopWithError error: any Error) {
         print("did stop with error")
@@ -101,6 +102,11 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
                     await setState(state: .running(virtualMachine, .preRun))
                     try await provisioner?.runCommand(cmd: preRun, sshClient: client, sshLogger: sshLogger)
                 }
+
+                if let livenessProbe = machineConfig.provisioner.livenessProbe {
+                    startLivenessProbe(livenessProbe: livenessProbe, virtualMachine: virtualMachine, ip: ip)
+                }
+
                 if let provisioner {
                     await setState(state: .running(virtualMachine, .provisioning))
                     try await provisioner.provision(sshClient: client, sshLogger: sshLogger)
@@ -110,6 +116,10 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
                     await setState(state: .running(virtualMachine, .postRun))
                     try await provisioner?.runCommand(cmd: postRun, sshClient: client, sshLogger: sshLogger)
                 }
+                
+                livenessProbeTask?.cancel()
+                livenessProbeTask = nil
+
                 await setState(state: .running(virtualMachine, .shutdown))
                 try await stopVM(vm: virtualMachine)
                 await setState(state: .cleanup)
@@ -178,6 +188,8 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
     }
 
     private func cleanup() throws {
+        livenessProbeTask?.cancel()
+        livenessProbeTask = nil
         try fileManager.removeItem(atPath: clonePath)
     }
 
@@ -210,6 +222,81 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
         case preRun
         case postRun
         case shutdown
+    }
+    
+    private func startLivenessProbe(livenessProbe: LivenessProbeConfig, virtualMachine: VZVirtualMachine, ip: String) {
+        livenessProbeTask = Task {
+            sshLogger.log(string: "[1;34mLiveness probe starting in \(livenessProbe.delay) seconds[0m\n")
+
+            // Initial delay before starting probes
+            try? await Task.sleep(for: .seconds(livenessProbe.delay))
+
+            guard !Task.isCancelled else { return }
+
+            sshLogger.log(string: "[1;34mLiveness probe active (interval: \(livenessProbe.interval)s)[0m\n")
+
+            while !Task.isCancelled {
+                do {
+                    // Create a new SSH client for the probe
+                    let probeClient = try await SSHClient.connect(
+                        host: ip,
+                        authenticationMethod: .passwordBased(
+                            username: machineConfig.sshCredentials.username,
+                            password: machineConfig.sshCredentials.password
+                        ),
+                        hostKeyValidator: .acceptAnything(),
+                        reconnect: .never,
+                        connectTimeout: .seconds(5)
+                    )
+
+                    // Execute the liveness probe command and check exit code
+                    // We use a wrapper command that explicitly outputs the exit code
+                    let wrappedCommand = "\(livenessProbe.command); echo \"EXIT_CODE:$?\""
+                    let streamOutput = try await probeClient.executeCommandStream(wrappedCommand, inShell: true)
+
+                    var outputBuffer = ""
+                    for try await blob in streamOutput {
+                        switch blob {
+                        case let .stdout(stdout):
+                            outputBuffer += String(buffer: stdout)
+                        case .stderr:
+                            break
+                        }
+                    }
+
+                    try await probeClient.close()
+
+                    // Extract exit code from output
+                    var exitCode = 1
+                    if let exitCodeMatch = outputBuffer.range(of: "EXIT_CODE:(\d+)", options: .regularExpression) {
+                        let exitCodeString = outputBuffer[exitCodeMatch].replacingOccurrences(of: "EXIT_CODE:", with: "")
+                        exitCode = Int(exitCodeString.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 1
+                    }
+
+                    guard exitCode == 0 else {
+                        sshLogger.log(string: "[1;31mLiveness probe failed with exit code \(exitCode), restarting VM[0m\n")
+
+                        // Cancel this task to prevent further probes
+                        livenessProbeTask?.cancel()
+                        livenessProbeTask = nil
+
+                        // Stop and restart the VM
+                        try await stopVM(vm: virtualMachine)
+                        // No explicit handleStop needed, cancellation/stop will trigger restart logic in start()
+                        return
+                    }
+
+                    // Wait for the next probe interval
+                    try await Task.sleep(for: .seconds(livenessProbe.interval))
+                } catch is CancellationError {
+                    return
+                } catch {
+                    // Log SSH or command execution errors but don't restart
+                    sshLogger.log(string: "[1;33mLiveness probe error (will retry): \(error.localizedDescription)[0m\n")
+                    try? await Task.sleep(for: .seconds(livenessProbe.interval))
+                }
+            }
+        }
     }
 }
 

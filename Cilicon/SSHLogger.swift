@@ -1,8 +1,20 @@
 import Foundation
-import NIOCore
 
-@Observable
-final class SSHLogger {
+@MainActor
+final class SSHLogger: ObservableObject {
+    static let shared = SSHLogger()
+
+    static let maxLogChunks = 500
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
+    init() { }
+
+    @Published
     var log: [LogChunk] = []
 
     var attributedLog: AttributedString {
@@ -12,51 +24,29 @@ final class SSHLogger {
     var combinedLog: String {
         var outString = String()
         for item in log {
-            outString.append(item.text)
-            outString.append("\n")
+            outString.append("[\(Self.dateFormatter.string(from: item.timestamp))] \(item.text)\n")
         }
         return outString
     }
 
-    func log(buffer: ByteBuffer) {
-        log(string: String(buffer: buffer))
-    }
-
     func log(string: String) {
-        /// Skip empty logs
-        guard string.isNotBlank else { return }
-        if log.isEmpty {
-            log = [LogChunk(text: string)]
-            return
+        let trimmedString = string.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedString.isEmpty else { return }
+
+        let lines = trimmedString.split(separator: "\n", omittingEmptySubsequences: false)
+        for line in lines {
+            log.append(LogChunk(text: String(line)))
         }
-        let lines = string.split(separator: "\n", omittingEmptySubsequences: false)
-        for (index, line) in lines.enumerated() {
-            if index == 0 {
-                log[log.count - 1].text.append(contentsOf: line)
-            } else {
-                if log.count >= 500 {
-                    log.remove(at: 0)
-                }
-                log.append(LogChunk(text: String(line)))
-            }
+        if log.count > Self.maxLogChunks {
+            // Drop the oldest log entries to keep only the most recent ones
+            log.removeFirst(log.count - Self.maxLogChunks)
         }
     }
 
     struct LogChunk: Identifiable, Hashable {
         let id = UUID()
+        let timestamp = Date()
         var text: String
-        var attributedText: AttributedString {
-            return ANSIParser.parse(text)
-        }
-    }
-}
-
-extension String {
-    var isBlank: Bool {
-        allSatisfy(\.isWhitespace)
-    }
-
-    var isNotBlank: Bool {
-        isBlank == false
     }
 }
