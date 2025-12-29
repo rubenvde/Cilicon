@@ -16,9 +16,9 @@ extension Provisioner {
         for try await blob in streamOutput {
             switch blob {
             case let .stdout(stdout):
-                sshLogger.log(buffer: stdout)
+                await sshLogger.log(buffer: stdout)
             case let .stderr(stderr):
-                sshLogger.log(buffer: stderr)
+                await sshLogger.log(buffer: stderr)
             }
         }
     }

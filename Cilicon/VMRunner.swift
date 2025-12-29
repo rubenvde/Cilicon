@@ -4,6 +4,7 @@ import Semaphore
 import Virtualization
 
 let vmSemaphore = AsyncSemaphore(value: 1)
+@MainActor
 @Observable
 class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
     var state: State = .idle
@@ -68,11 +69,11 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
         let task = Task(priority: .background) {
             do {
                 // Get Source
-                await setState(state: .fetching)
+                setState(state: .fetching)
                 let source = machineConfig.source
                 let path = try await SourceManager.shared.getPath(source: source)
                 // Clone Source
-                await setState(state: .cloning)
+                setState(state: .cloning)
                 let clonedURL = try cloneSource(at: path.path)
                 // Run VM
                 let bundle = VMBundle(url: clonedURL)
@@ -84,22 +85,13 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
                 let virtualMachine = VZVirtualMachine(configuration: vmConfig)
                 virtualMachine.delegate = self
                 try await startVM(vm: virtualMachine)
-                await setState(state: .running(virtualMachine, .connecting))
+                setState(state: .running(virtualMachine, .connecting))
                 let ip = try await fetchIP()
                 try Task.checkCancellation()
-                let client = try await SSHClient.connect(
-                    host: ip,
-                    authenticationMethod: .passwordBased(
-                        username: machineConfig.sshCredentials.username,
-                        password: machineConfig.sshCredentials.password
-                    ),
-                    hostKeyValidator: .acceptAnything(),
-                    reconnect: .never,
-                    connectTimeout: .seconds(60)
-                )
+                let client = try await createAndConnectSSHClient(ip: ip)
 
                 if let preRun = machineConfig.preRun {
-                    await setState(state: .running(virtualMachine, .preRun))
+                    setState(state: .running(virtualMachine, .preRun))
                     try await provisioner?.runCommand(cmd: preRun, sshClient: client, sshLogger: sshLogger)
                 }
 
@@ -108,24 +100,24 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
                 }
 
                 if let provisioner {
-                    await setState(state: .running(virtualMachine, .provisioning))
+                    setState(state: .running(virtualMachine, .provisioning))
                     try await provisioner.provision(sshClient: client, sshLogger: sshLogger)
                 }
 
                 if let postRun = machineConfig.postRun {
-                    await setState(state: .running(virtualMachine, .postRun))
+                    setState(state: .running(virtualMachine, .postRun))
                     try await provisioner?.runCommand(cmd: postRun, sshClient: client, sshLogger: sshLogger)
                 }
                 
                 livenessProbeTask?.cancel()
                 livenessProbeTask = nil
 
-                await setState(state: .running(virtualMachine, .shutdown))
+                setState(state: .running(virtualMachine, .shutdown))
                 try await stopVM(vm: virtualMachine)
-                await setState(state: .cleanup)
+                setState(state: .cleanup)
                 try cleanup()
             } catch {
-                await setState(state: .failed(error.localizedDescription))
+                setState(state: .failed(error.localizedDescription))
                 throw error
             }
         }
@@ -140,7 +132,7 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
                     try await stopVM(vm: vm)
                 }
                 try cleanup()
-                await setState(state: .canceled)
+                setState(state: .canceled)
             } else {
                 throw err
             }
@@ -268,7 +260,7 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
 
                     // Extract exit code from output
                     var exitCode = 1
-                    if let exitCodeMatch = outputBuffer.range(of: "EXIT_CODE:(\d+)", options: .regularExpression) {
+                    if let exitCodeMatch = outputBuffer.range(of: #"EXIT_CODE:(\d+)"#, options: .regularExpression) {
                         let exitCodeString = outputBuffer[exitCodeMatch].replacingOccurrences(of: "EXIT_CODE:", with: "")
                         exitCode = Int(exitCodeString.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 1
                     }
@@ -296,6 +288,71 @@ class VMRunner: NSObject, Identifiable, VZVirtualMachineDelegate {
                     try? await Task.sleep(for: .seconds(livenessProbe.interval))
                 }
             }
+        }
+    }
+
+    private func createAndConnectSSHClient(ip: String) async throws -> SSHClient {
+        sshLogger.log(string: "Waiting for VM to boot and SSH to be available...\n")
+        let maxRetries = machineConfig.sshConnectMaxRetries
+        var tries = 0
+
+        while tries < maxRetries {
+            do {
+                let client = try await SSHClient.connect(
+                    host: ip,
+                    authenticationMethod: .passwordBased(
+                        username: machineConfig.sshCredentials.username,
+                        password: machineConfig.sshCredentials.password
+                    ),
+                    hostKeyValidator: .acceptAnything(),
+                    reconnect: .never,
+                    connectTimeout: .seconds(5)
+                )
+
+                // Test if we can execute a simple command
+                let token = "ssh-connected"
+                let streamOutput = try await client.executeCommandStream("echo \(token)", inShell: true)
+                var commandSuccessful = false
+
+                for try await blob in streamOutput {
+                    switch blob {
+                    case let .stdout(stdout):
+                        let output = String(buffer: stdout)
+                        if output.contains(token) {
+                            commandSuccessful = true
+                        }
+                    case .stderr:
+                        break
+                    }
+                }
+
+                if commandSuccessful {
+                    sshLogger.log(string: "VM fully booted and SSH available\n")
+                    return client
+                }
+
+                try await client.close()
+            } catch {
+                // SSH not ready yet, continue waiting
+                tries += 1
+                sshLogger.log(string: "SSH connect \(tries)/\(maxRetries): SSH not ready, waiting 5s...\n")
+                try await Task.sleep(for: .seconds(5))
+            }
+        }
+
+        throw VMRunnerError.sshConnectTimeout
+    }
+}
+
+enum VMRunnerError: Error {
+    case sshConnectTimeout
+}
+
+extension VMRunnerError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .sshConnectTimeout:
+            return "SSH Connect timeout"
         }
     }
 }

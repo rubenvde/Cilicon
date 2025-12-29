@@ -3,31 +3,24 @@ import Foundation
 
 /// The Buildkite Provisioner
 class BuildkiteAgentProvisioner: Provisioner {
-    let agentToken: String
-    let tags: [String]
+    let config: BuildkiteAgentProvisionerConfig
 
     init(config: BuildkiteAgentProvisionerConfig) {
-        self.agentToken = config.agentToken
-        self.tags = config.tags
+        self.config = config
     }
 
     func provision(sshClient: SSHClient, sshLogger: SSHLogger) async throws {
-        var block = """
-        TOKEN="\(agentToken)" bash -c "`curl -sL https://raw.githubusercontent.com/buildkite/agent/main/install.sh`"
-        ~/.buildkite-agent/bin/buildkite-agent start --disconnect-after-job
+        let command = """
+        sudo su - buildkite-agent -c \"buildkite-agent start --token \(config.agentToken) --tags \(config.tags.joined(separator: ","))\"
         """
-
-        if !tags.isEmpty {
-            block.append(" --tags \(tags.joined(separator: ","))")
-        }
-
-        let streamOutput = try await sshClient.executeCommandStream(block, inShell: true)
+        
+        let streamOutput = try await sshClient.executeCommandStream(command, inShell: true)
         for try await blob in streamOutput {
             switch blob {
             case let .stdout(stdout):
-                sshLogger.log(string: String(buffer: stdout))
+                await sshLogger.log(string: String(buffer: stdout))
             case let .stderr(stderr):
-                sshLogger.log(string: String(buffer: stderr))
+                await sshLogger.log(string: String(buffer: stderr))
             }
         }
     }

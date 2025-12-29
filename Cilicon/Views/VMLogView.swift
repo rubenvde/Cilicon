@@ -25,7 +25,7 @@ struct VMLogView: View {
                     }
                 }
                 .textSelection(.enabled)
-                .onReceive(logger.$log) { _ in
+                .onReceive(logger.$logs) { _ in
                     refreshID = UUID()
                     scrollViewProxy.scrollTo(logger.combinedLog, anchor: .bottom)
                 }

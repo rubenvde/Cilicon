@@ -9,10 +9,6 @@ struct Config: Decodable {
     let clonePath: String?
     /// Number of runs until the Host machine reboots.
     let numberOfRunsUntilHostReboot: Int?
-    /// Delay in seconds before retrying to provision the image a failed cycle.
-//    let retryDelay: Int
-    /// Timeout for the SSH connection.
-//    let sshTimeout: Int
 }
 
 struct MachineConfig: Decodable {
@@ -28,10 +24,14 @@ struct MachineConfig: Decodable {
     let source: VMSource
     /// Credentials to be used when connecting via SSH.
     let sshCredentials: SSHCredentials
+    /// Maximum number of retries for SSH connection attempts.
+    let sshConnectMaxRetries: Int
     /// A command to run before the provisioning commands are run.
     let preRun: String?
     /// A command to run after the provisioning commands are run.
     let postRun: String?
+    /// A list of console device names that are going to be injected into the VM.
+    let consoleDevices: [String]
 
     enum CodingKeys: CodingKey {
         case id
@@ -42,8 +42,10 @@ struct MachineConfig: Decodable {
         case runnerName
         case retryDelay
         case sshCredentials
+        case sshConnectMaxRetries
         case preRun
         case postRun
+        case consoleDevices
     }
 
     init(from decoder: Decoder) throws {
@@ -54,8 +56,10 @@ struct MachineConfig: Decodable {
         self.directoryMounts = try container.decodeIfPresent([DirectoryMountConfig].self, forKey: .directoryMounts) ?? []
         self.source = try container.decode(VMSource.self, forKey: .source)
         self.sshCredentials = try container.decodeIfPresent(SSHCredentials.self, forKey: .sshCredentials) ?? .default
+        self.sshConnectMaxRetries = try container.decodeIfPresent(Int.self, forKey: .sshConnectMaxRetries) ?? 10
         self.preRun = try container.decodeIfPresent(String.self, forKey: .preRun)
         self.postRun = try container.decodeIfPresent(String.self, forKey: .postRun)
+        self.consoleDevices = try container.decodeIfPresent([String].self, forKey: .consoleDevices) ?? []
     }
 }
 

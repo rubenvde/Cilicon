@@ -1,4 +1,5 @@
 import Foundation
+import NIOCore
 
 @MainActor
 final class SSHLogger: ObservableObject {
@@ -15,7 +16,7 @@ final class SSHLogger: ObservableObject {
     init() { }
 
     @Published
-    var log: [LogChunk] = []
+    var logs: [LogChunk] = []
 
     var attributedLog: AttributedString {
         return ANSIParser.parse(combinedLog)
@@ -23,10 +24,14 @@ final class SSHLogger: ObservableObject {
 
     var combinedLog: String {
         var outString = String()
-        for item in log {
+        for item in logs {
             outString.append("[\(Self.dateFormatter.string(from: item.timestamp))] \(item.text)\n")
         }
         return outString
+    }
+
+    func log(buffer: ByteBuffer) {
+        log(string: String(buffer: buffer))
     }
 
     func log(string: String) {
@@ -36,11 +41,11 @@ final class SSHLogger: ObservableObject {
 
         let lines = trimmedString.split(separator: "\n", omittingEmptySubsequences: false)
         for line in lines {
-            log.append(LogChunk(text: String(line)))
+            logs.append(LogChunk(text: String(line)))
         }
-        if log.count > Self.maxLogChunks {
+        if logs.count > Self.maxLogChunks {
             // Drop the oldest log entries to keep only the most recent ones
-            log.removeFirst(log.count - Self.maxLogChunks)
+            logs.removeFirst(logs.count - Self.maxLogChunks)
         }
     }
 

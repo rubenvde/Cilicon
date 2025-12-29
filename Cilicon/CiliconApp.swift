@@ -44,6 +44,7 @@ struct CiliconApp: App {
     }
 }
 
+@MainActor
 @Observable
 class CiliconCoreApp {
     let title: String = "Cilicon"
@@ -88,7 +89,7 @@ class CiliconCoreApp {
             guard let weakSelf = self else { return }
             for runner in weakSelf.vmRunners {
                 group.addTask(priority: .background) {
-                    while weakSelf.runCounter < .max, !weakSelf.restartScheduled {
+                    while await weakSelf.runCounter < .max, !(await weakSelf.restartScheduled) {
                         do {
                             try await runner.start()
                             await weakSelf.incrementRunCount()
@@ -97,7 +98,9 @@ class CiliconCoreApp {
                             try await Task.sleep(for: .seconds(2))
                         }
                     }
-                    weakSelf.restartScheduled = true
+                    await MainActor.run {
+                        weakSelf.restartScheduled = true
+                    }
                 }
             }
         }

@@ -48,9 +48,9 @@ class AzureDevopsAgentProvisioner: Provisioner {
         for try await blob in streamOutput {
             switch blob {
             case let .stdout(stdout):
-                sshLogger.log(string: String(buffer: stdout))
+                await sshLogger.log(string: String(buffer: stdout))
             case let .stderr(stderr):
-                sshLogger.log(string: String(buffer: stderr))
+                await sshLogger.log(string: String(buffer: stderr))
             }
         }
     }
